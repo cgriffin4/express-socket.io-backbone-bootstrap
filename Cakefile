@@ -1,66 +1,26 @@
-{spawn, exec} = require 'child_process'
-
-option '-p', '--prefix [DIR]', 'set the installation prefix for `cake install`'
-
 async = require "async"
 fs = require "fs"
-path = require "fs"
-_ = require "underscore"
+{print} = require 'util'
+{spawn, exec} = require 'child_process'
 
-stdout_handler = (data)->
-  console.log data.toString().trim()
 
-build = (watch)->
-  console.log "Watching coffee scripts"
+task 'watch', 'Watch for changes and rebuild', ->
+  options = ['-cw', '-b', '-o', 'public/javascripts', 'src']
 
-  options = ['-c', '-b', '-o', 'public/javascripts', 'public/coffeescripts']
-  app_options = ['-c', '-o', 'public/javascripts/application', 'client']
+  coffee = spawn 'coffee', options
 
-  if watch is true
-    options[0] = '-cw'
-    app_options[0] = '-cw'
+  coffee.stdout.on 'data', (data)->
+    print data.toString()
 
-  coffee = spawn 'coffee', options 
-  app = spawn 'coffee', app_options
+task 'start', 'Start server', ->
+  app = spawn 'coffee', ['-w', 'app.coffee']
+  app.stdout.on 'data', (data)->
+    print data.toString()
 
-  coffee.stdout.on 'data', stdout_handler
-  app.stdout.on 'data', stdout_handler
+  options = ['-cw', '-b', '-o', 'public/javascripts', 'src']
 
-style = (watch)->
-  console.log "Watching stylesheets"
+  coffee = spawn 'coffee', options
 
-  options = ['--update', 'stylesheets:public/stylesheets']
+  coffee.stdout.on 'data', (data)->
+    print data.toString()
 
-  if watch is true
-    options[0] = "--watch"
-
-  sass = spawn 'sass', options
-
-  sass.stdout.on 'data', (data)-> stdout_handler
-  sass.stderr.on "data", (data)-> stdout_handler
-
-buildTemplates = (callback) ->
-  eco = require 'eco'
-  compile = (name) ->
-    (callback) ->
-      fs.readFile "templates/#{name}.eco", "utf8", (err, data) ->
-        if err then callback err
-        else fs.writeFile "lib/templates/#{name}.js", eco.compile(data), callback
-
-  async.parallel [
-    compile("sample")
-  ], callback
-
-  
-task 'templates', ->
-  buildTemplates()
-
-task 'style', (watch)->
-  style watch
-
-task 'build', 'build the project', (watch)->
-  build watch
-
-task 'watch', 'watch for changes and rebuild', ->
-  build true
-  style true
